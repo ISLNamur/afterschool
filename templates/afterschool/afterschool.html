@@ -1,0 +1,24 @@
+{% extends "core/base_vue.html" %}
+
+{% load vite %}
+
+{% block header %}
+<title>HappySchool : afterschool</title>
+
+{% vite %}
+{% vite "afterschool/js/afterschool.js" %}
+
+{% endblock %}
+{% block content %}
+
+<script>
+    const current_app = "afterschool";
+    const settings = JSON.parse('{{ settings|safe }}');;
+    const menu = {{ menu|safe }};
+    const canViewSubscriptions = JSON.parse('{{ can_view_subscriptions|safe }}');
+</script>
+<div id="vue-app">
+    <img class="loading-spin" src="/static/img/spin.svg" alt="Loading" />
+</div>
+
+{% endblock %}
