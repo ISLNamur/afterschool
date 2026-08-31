@@ -50,7 +50,10 @@
                 no-body
                 class="mb-3 activity"
             >
-                <div class="date text-muted bg-light font-weight-bold">
+                <div
+                    class="date text-muted bg-light font-weight-bold"
+                    style="display: none;"
+                >
                     {{ a.date_start }}
                     <b-icon icon="arrow-right" />
                     {{ a.date_stop }}

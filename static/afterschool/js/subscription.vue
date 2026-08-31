@@ -29,7 +29,7 @@
             </BButton>
             <h3>{{ activity.name }}</h3>
             <p class="bg-light">
-                Le <strong>{{ days[activity.day] }}</strong> entre le <strong>{{ activity.date_start }}</strong> et le <strong>{{ activity.date_stop }}</strong>.
+                Le <strong>{{ days[activity.day] }}</strong>.
             </p>
             <p>{{ activity.description }}</p>
             <h4>Formulaire d'inscription</h4>
