@@ -29,7 +29,9 @@
             </BButton>
             <h3>{{ activity.name }}</h3>
             <p class="bg-light">
-                Le <strong>{{ days[activity.day] }}</strong>.
+                Le <strong>{{ days[activity.day] }}
+                    <span v-if="activity.next_week_sub">{{ nextSubDay.toLocaleString() }}</span>
+                </strong>.
             </p>
             <p>{{ activity.description }}</p>
             <h4>Formulaire d'inscription</h4>
@@ -154,12 +156,6 @@
                         </BFormInvalidFeedback>
                     </BFormRadioGroup>
                 </BFormGroup>
-                <b-alert
-                    variant="danger"
-                    show
-                >
-                    Merci d'attendre la réception de la facture avant de payer.
-                </b-alert>
                 <BFormGroup>
                     <BFormCheckbox
                         v-model="agree"
@@ -184,6 +180,7 @@
 <script>
 import axios from "axios";
 import useVuelidate from "@vuelidate/core";
+import { DateTime } from "luxon";
 import { required, email } from "@vuelidate/validators";
 
 import { useToast } from "bootstrap-vue-next";
@@ -233,6 +230,21 @@ export default {
             },
             agree: false,
         };
+    },
+    computed: {
+        nextSubDay: function () {
+            const currentDT = DateTime.now();
+            if (currentDT.weekday - 1 !== this.activity.day) {
+                const deltaDays = (8 - (currentDT.weekday - this.activity.day)) % 7;
+                return currentDT.plus({ days: deltaDays });
+            }
+
+            if (currentDT.hour >= 12) {
+                return currentDT.plus({ days: 7 });
+            }
+
+            return currentDT;
+        },
     },
     methods: {
         validateState: function (name) {

@@ -24,6 +24,11 @@ from core.models import TeachingModel, StudentModel
 class AfterschoolSettingsModel(models.Model):
     teachings = models.ManyToManyField(TeachingModel, default=None)
     show_by_teaching = models.BooleanField(default=False)
+    email_subscription_warning = models.CharField(
+        max_length=500,
+        help_text="Semi-colon separated values",
+        blank=True,
+    )
 
 
 class ActivityModel(models.Model):
@@ -39,6 +44,7 @@ class ActivityModel(models.Model):
     timerange = models.CharField(max_length=100, blank=True)
     date_start = models.DateField()
     date_stop = models.DateField()
+    next_week_sub = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.name} {self.age}"
@@ -63,7 +69,9 @@ class ActivitySubscriptionModel(models.Model):
     resp_email_2 = models.EmailField(null=True, blank=True)
     resp_phone = models.CharField(max_length=200)
     resp_phone_2 = models.CharField(max_length=200, blank=True)
-    resp_payement = models.CharField(max_length=20, choices=PAYEMENT_CHOICES, default="1x")
+    resp_payement = models.CharField(
+        max_length=20, choices=PAYEMENT_CHOICES, default="1x"
+    )
     datetime_inscription = models.DateTimeField("Creation date", auto_now_add=True)
     answered = models.BooleanField(default=False)
     payed = models.BooleanField(default=False)

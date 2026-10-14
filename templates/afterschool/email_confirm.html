@@ -6,8 +6,9 @@
 </head>
 <body>
 <p>Bonjour,</p>
-<p>Merci d'avoir fait une demande d'inscription pour {{ sub.student_lastname }} {{ sub.student_firstname }} à l'activité «{{ sub.activity.name }}».</p>
-<p>Nous vous recontacterons début septembre afin de confirmer l'inscription de votre enfant à l'activité.</p>
+<p>Merci d'avoir fait une demande d'inscription pour {{ sub.student_lastname }} {{ sub.student_firstname }} à l'activité «<em>{{ sub.activity.name }}</em>»
+    {% if date %}pour la date du <strong>{{ date }}</strong>{% endif %}.</p>
+{% if not date %}<p>Nous vous recontacterons début septembre afin de confirmer l'inscription de votre enfant à l'activité.</p>{% endif %}
 <p>L'équipe d'After School</p>
 <hr>
 <p style="color:grey">Ceci est un email automatique, merci de ne pas y répondre. Si vous avez un problème, veuillez contacter <a mailto="info@slas.be">info@slas.be</a>.</p>

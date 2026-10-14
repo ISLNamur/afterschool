@@ -21,23 +21,34 @@ import json
 import xlsxwriter
 
 from io import BytesIO
+from datetime import timedelta
 
 from django.views.generic import TemplateView
 from django.views import View
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.http import HttpResponse
+from django.utils import timezone
 
 from django_filters import rest_framework as filters
 
 from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
 from rest_framework.viewsets import ReadOnlyModelViewSet, ModelViewSet
 
-from core.views import BaseFilters, BaseModelViewSet, get_app_settings, LargePageSizePagination
+from core.views import (
+    BaseFilters,
+    BaseModelViewSet,
+    get_app_settings,
+    LargePageSizePagination,
+)
 from core.utilities import get_menu
 from core.email import send_email
 
 from .models import AfterschoolSettingsModel, ActivityModel, ActivitySubscriptionModel
-from .serializers import AfterschoolSettingsSerializer, ActivitySerializer, ActivitySubscriptionSerializer
+from .serializers import (
+    AfterschoolSettingsSerializer,
+    ActivitySerializer,
+    ActivitySubscriptionSerializer,
+)
 
 
 def get_menu_entry(active_app, request):
@@ -63,7 +74,9 @@ class AfterschoolView(TemplateView):
         context = super().get_context_data()
         context["menu"] = json.dumps(get_menu(self.request, "afterschool"))
         context["filters"] = json.dumps(self.filter_set)
-        context["settings"] = json.dumps((AfterschoolSettingsSerializer(get_settings()).data))
+        context["settings"] = json.dumps(
+            (AfterschoolSettingsSerializer(get_settings()).data)
+        )
         context["can_view_subscriptions"] = json.dumps(
             self.request.user.has_perm("afterschool.view_activitysubscriptionmodel")
         )
@@ -90,11 +103,37 @@ class ActivitySubscriptionViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         subscription = serializer.save()
+
+        date_next_activity = None
+        if subscription.activity.next_week_sub:
+            current_dt = timezone.now()
+            # After/before activity day.
+            if current_dt.weekday() != subscription.activity.day:
+                diff_days = (7 - (current_dt.weekday() - subscription.activity.day)) % 7
+                date_next_activity = (current_dt + timedelta(days=diff_days)).date()
+            else:
+                if current_dt.astimezone().hour >= 12:
+                    date_next_activity = (current_dt + timedelta(days=7)).date()
+                else:
+                    date_next_activity = current_dt.date()
+
+        # Send to responsible.
         send_email(
             to=[subscription.resp_email],
             subject="Confirmation de la demande d'inscription à SLAS",
             email_template="afterschool/email_confirm.html",
-            context={"sub": subscription}
+            context={"sub": subscription, "date": date_next_activity},
+        )
+
+        # Send a copy.
+        afterschool_settings = get_settings()
+        emails = afterschool_settings.email_subscription_warning.split(";")
+        print(emails)
+        send_email(
+            to=emails,
+            subject="[AfterSchool] Nouvelle inscription",
+            email_template="afterschool/email_warning.html",
+            context={"sub": subscription, "date": date_next_activity},
         )
 
 
@@ -105,29 +144,33 @@ class SubscriptionExcelView(PermissionRequiredMixin, View):
         subscriptions = ActivitySubscriptionModel.objects.all()
         file_name = "subscriptions.xlsx"
         output = BytesIO()
-        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        workbook = xlsxwriter.Workbook(output, {"in_memory": True})
         worksheet = workbook.add_worksheet()
         worksheet.set_column(0, 2, 30)
 
         row = 0
-        worksheet.write_row(0, 0, [
-            "Nom élève",
-            "Prénom élève",
-            "Classe",
-            "Date de naissance",
-            "Autre famille",
-            "Resp. nom",
-            "Resp. prénom",
-            "Resp. adresse",
-            "Resp. courriel 1",
-            "Resp. courriel 2",
-            "Resp. tél. 1",
-            "Resp. tél. 2",
-            "Paiement",
-            "Répondu",
-            "Payé",
-            "Activité",
-        ])
+        worksheet.write_row(
+            0,
+            0,
+            [
+                "Nom élève",
+                "Prénom élève",
+                "Classe",
+                "Date de naissance",
+                "Autre famille",
+                "Resp. nom",
+                "Resp. prénom",
+                "Resp. adresse",
+                "Resp. courriel 1",
+                "Resp. courriel 2",
+                "Resp. tél. 1",
+                "Resp. tél. 2",
+                "Paiement",
+                "Répondu",
+                "Payé",
+                "Activité",
+            ],
+        )
         row += 1
         days = {
             0: "Lundi",
@@ -137,30 +180,34 @@ class SubscriptionExcelView(PermissionRequiredMixin, View):
             4: "Vendredi",
         }
         for s in subscriptions:
-            worksheet.write_row(row, 0, [
-                s.student_lastname,
-                s.student_firstname,
-                s.classe,
-                str(s.birth),
-                s.family,
-                s.resp_lastname,
-                s.resp_firstname,
-                s.resp_address,
-                s.resp_email,
-                s.resp_email_2,
-                s.resp_phone,
-                s.resp_phone_2,
-                s.resp_payement,
-                s.answered,
-                s.payed,
-                f"{s.activity.name} ({days[s.activity.day]} / {s.activity.timerange})",
-            ])
+            worksheet.write_row(
+                row,
+                0,
+                [
+                    s.student_lastname,
+                    s.student_firstname,
+                    s.classe,
+                    str(s.birth),
+                    s.family,
+                    s.resp_lastname,
+                    s.resp_firstname,
+                    s.resp_address,
+                    s.resp_email,
+                    s.resp_email_2,
+                    s.resp_phone,
+                    s.resp_phone_2,
+                    s.resp_payement,
+                    s.answered,
+                    s.payed,
+                    f"{s.activity.name} ({days[s.activity.day]} / {s.activity.timerange})",
+                ],
+            )
             row += 1
         workbook.close()
 
         response = HttpResponse(
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-        response['Content-Disposition'] = 'filename; filename="' + file_name + '"'
+        response["Content-Disposition"] = 'filename; filename="' + file_name + '"'
         response.write(output.getvalue())
         return response
